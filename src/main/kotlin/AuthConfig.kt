@@ -32,9 +32,7 @@ fun Application.configureAuth() {
                     JWTPrincipal(credential.payload)
                 } else null
             }
-            challenge { defaultScheme, realm ->
-                call.respond(HttpStatusCode.Unauthorized, "Token is not valid or has expired")
-            }
+            challenge { _, _ -> call.respond(HttpStatusCode.Unauthorized, "Token is not valid or has expired") }
         }
     }
 }
