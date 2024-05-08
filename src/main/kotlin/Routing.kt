@@ -38,10 +38,14 @@ fun Route.userRoutes(userDAO: DAOFacade) {
         }
     }
     post("/user") {
-        val user = call.receive<LoginRequest>()
-        val passwordHash = hashPassword(user.password)
-        userDAO.addNewUser(user.username, passwordHash)
-        call.respondText("User saved with login: ${user.username}", status = HttpStatusCode.Created)
+        val newUser = call.receive<LoginRequest>()
+        val passwordHash = hashPassword(newUser.password)
+        val user = userDAO.addNewUser(newUser.username, passwordHash)
+        if (user != null) {
+            call.respondText("User saved with login: ${newUser.username}", status = HttpStatusCode.Created)
+        } else {
+            call.respond(HttpStatusCode.Conflict, "Username already exists")
+        }
     }
 }
 
@@ -50,16 +54,3 @@ fun hashPassword(password: String): String {
         .digest(password.toByteArray())
         .fold("", { str, it -> str + "%02x".format(it) })
 }
-
-
-//routing {
-//    authenticate("auth-jwt") {
-//        get("/hello") {
-//            val principal = call.principal<JWTPrincipal>()
-//            val username = principal!!.payload.getClaim("username").asString()
-//            val expiresAt = principal.expiresAt?.time?.minus(System.currentTimeMillis())
-//            call.respondText("Hello, $username! Token is expired at $expiresAt ms.")
-//        }
-//    }
-//}
-

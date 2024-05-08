@@ -1,5 +1,6 @@
 package pro.aibar.sweatsketch.dao
 
+import org.jetbrains.exposed.exceptions.ExposedSQLException
 import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.insert
@@ -10,12 +11,25 @@ import pro.aibar.sweatsketch.models.Users
 
 class DAOFacadeImpl: DAOFacade {
     override suspend fun addNewUser(username: String, passwordHash: String): User? = dbQuery {
-        val insertStatement = Users.insert {
-            it[Users.username] = username
-            it[Users.passwordHash] = passwordHash
-        }
-        insertStatement.resultedValues?.singleOrNull()?.let {
-            toUser(it)
+        try {
+            val insertStatement = Users.insert {
+                it[Users.username] = username
+                it[Users.passwordHash] = passwordHash
+            }
+            insertStatement.resultedValues?.singleOrNull()?.let {
+                toUser(it)
+            }
+        } catch (e: Exception) {
+            when (e) {
+                is ExposedSQLException -> {
+                    if (e.message?.contains("USERS_USERNAME_UNIQUE") == true) {
+                        null  // Username already exists
+                    } else {
+                        throw e  // Re-throw the exception if it's not related to our unique constraint
+                    }
+                }
+                else -> throw e
+            }
         }
     }
 
