@@ -7,6 +7,7 @@ import io.ktor.server.application.*
 import io.ktor.server.auth.*
 import io.ktor.server.auth.jwt.*
 import io.ktor.server.response.*
+import java.util.*
 
 
 fun Application.configureAuth() {
@@ -26,11 +27,10 @@ fun Application.configureAuth() {
                     .build()
             )
             validate { credential ->
-                if (credential.payload.getClaim("login").asString() != "") {
+                if (credential.payload.expiresAt?.before(Date()) != true &&
+                credential.payload.getClaim("login").asString() != "") {
                     JWTPrincipal(credential.payload)
-                } else {
-                    null
-                }
+                } else null
             }
             challenge { defaultScheme, realm ->
                 call.respond(HttpStatusCode.Unauthorized, "Token is not valid or has expired")

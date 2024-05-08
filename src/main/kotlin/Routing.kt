@@ -16,7 +16,8 @@ fun Route.userRoutes(userDAO: DAOFacade) {
 
     val issuer = environment!!.config.property("jwt.issuer").getString()
     val audience = environment!!.config.property("jwt.audience").getString()
-    val secret = environment!!.config.property("jwt.secret").getString()
+    val tokenSecret = environment!!.config.property("jwt.secret").getString()
+    val refreshTokenSecret = environment!!.config.property("jwt.refreshSecret").getString()
 
     get("/") {
         call.respondText("Hello World!")
@@ -26,13 +27,20 @@ fun Route.userRoutes(userDAO: DAOFacade) {
         val loginRequest = call.receive<LoginRequest>()
         val passwordHash = hashPassword(loginRequest.password)
         if (userDAO.validateUser(loginRequest.username, passwordHash)) {
-            val token = JWT.create()
+            val accessToken = JWT.create()
                 .withAudience(audience)
                 .withIssuer(issuer)
                 .withClaim("login", loginRequest.username)
-                .withExpiresAt(Date(System.currentTimeMillis() + 60_000))
-                .sign(Algorithm.HMAC256(secret))
-            call.respond(hashMapOf("token" to token))
+                .withExpiresAt(Date(System.currentTimeMillis() + 600_000))
+                .sign(Algorithm.HMAC256(tokenSecret))
+
+            val refreshToken = JWT.create()
+                .withIssuer(issuer)
+                .withClaim("login", loginRequest.username)
+                .withExpiresAt(Date(System.currentTimeMillis() + 2_592_000_000))  // 30 days
+                .sign(Algorithm.HMAC256(refreshTokenSecret))
+
+            call.respond(hashMapOf("accessToken" to accessToken, "refreshToken" to refreshToken))
         } else {
             call.respond(HttpStatusCode.Unauthorized, "Invalid credentials")
         }
