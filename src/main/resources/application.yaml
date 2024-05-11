@@ -6,8 +6,8 @@ ktor:
       - pro.aibar.sweatsketch.ApplicationKt.userModule
 
 jwt:
-  secret: "secretsweatsecretsketch"
-  refreshSecret: "refreshsecretsweatsecretsketchrefresh"
+  secret: ""
+  refreshSecret: ""
   issuer: "http://0.0.0.0:8080/"
   audience: "http://0.0.0.0:8080/hello"
   realm: "Access to SweatSketch service"
