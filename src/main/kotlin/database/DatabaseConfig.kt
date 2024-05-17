@@ -1,7 +1,6 @@
-package pro.aibar.sweatsketch
+package pro.aibar.sweatsketch.database
 
 import io.ktor.server.application.*
-import pro.aibar.sweatsketch.dao.DatabaseSingleton
 
 fun Application.configureDatabase(){
     DatabaseSingleton.init()

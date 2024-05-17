@@ -3,7 +3,10 @@ ktor:
     port: 8080
   application:
     modules:
+      - pro.aibar.sweatsketch.ApplicationKt.mainModule
       - pro.aibar.sweatsketch.ApplicationKt.userModule
+      - pro.aibar.sweatsketch.ApplicationKt.authModule
+
 
 jwt:
   secret: ""
