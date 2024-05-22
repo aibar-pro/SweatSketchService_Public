@@ -1,4 +1,4 @@
-package pro.aibar.sweatsketch
+package pro.aibar.sweatsketch.authentication
 
 import com.auth0.jwt.JWT
 import com.auth0.jwt.algorithms.Algorithm
@@ -27,10 +27,12 @@ fun Application.configureAuth() {
                     .build()
             )
             validate { credential ->
-                if (credential.payload.expiresAt?.before(Date()) != true &&
-                credential.payload.getClaim("login").asString() != "") {
+                val login = credential.payload.getClaim("login").asString()
+                if (credential.payload.expiresAt?.after(Date()) == true && !login.isNullOrEmpty()) {
                     JWTPrincipal(credential.payload)
-                } else null
+                } else {
+                    null
+                }
             }
             challenge { _, _ -> call.respond(HttpStatusCode.Unauthorized, "Token is not valid or has expired") }
         }

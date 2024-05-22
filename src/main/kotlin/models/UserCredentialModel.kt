@@ -3,4 +3,4 @@ package pro.aibar.sweatsketch.models
 import kotlinx.serialization.Serializable
 
 @Serializable
-data class LoginRequest(val username: String, val password: String)
+data class UserCredentialModel(val login: String, val password: String)
