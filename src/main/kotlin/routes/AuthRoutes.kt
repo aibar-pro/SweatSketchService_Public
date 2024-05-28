@@ -2,6 +2,7 @@ package pro.aibar.sweatsketch.routes
 
 import com.auth0.jwt.JWT
 import com.auth0.jwt.algorithms.Algorithm
+import com.auth0.jwt.interfaces.DecodedJWT
 import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.request.*
@@ -21,29 +22,28 @@ fun Route.authRoutes(authDAO: AuthDAOFacade) {
     val tokenSecret = environment!!.config.property("jwt.secret").getString()
     val refreshTokenSecret = environment!!.config.property("jwt.refreshSecret").getString()
 
-    get("/health-check") {
-        call.respond(HttpStatusCode.OK, "Running")
+    fun generateToken(login: String): AuthTokenModel {
+        val expiresIn = System.currentTimeMillis() + 600_000
+        val accessToken = JWT.create()
+            .withAudience(audience)
+            .withIssuer(issuer)
+            .withClaim("login", login)
+            .withExpiresAt(Date(expiresIn))
+            .sign(Algorithm.HMAC256(tokenSecret))
+        val refreshToken = JWT.create()
+            .withIssuer(issuer)
+            .withClaim("login", login)
+            .withExpiresAt(Date(System.currentTimeMillis() + 2_592_000_000))  // 30 days
+            .sign(Algorithm.HMAC256(refreshTokenSecret))
+        return AuthTokenModel(accessToken, refreshToken, expiresIn.toULong())
     }
 
     post("/auth/login") {
         val userCredentialModel = call.receive<UserCredentialModel>()
         val passwordHash = hashPassword(userCredentialModel.password)
         if (authDAO.validateUser(userCredentialModel.login, passwordHash)) {
-            val expiresIn = System.currentTimeMillis() + 600_000
-            val accessToken = JWT.create()
-                .withAudience(audience)
-                .withIssuer(issuer)
-                .withClaim("login", userCredentialModel.login)
-                .withExpiresAt(Date(expiresIn))
-                .sign(Algorithm.HMAC256(tokenSecret))
-            val refreshToken = JWT.create()
-                .withIssuer(issuer)
-                .withClaim("login", userCredentialModel.login)
-                .withExpiresAt(Date(System.currentTimeMillis() + 2_592_000_000))  // 30 days
-                .sign(Algorithm.HMAC256(refreshTokenSecret))
-
-            val token = AuthTokenModel(accessToken, refreshToken, expiresIn.toULong())
-            authDAO.addRefreshToken(RefreshTokenModel(userCredentialModel.login, refreshToken))
+            val token = generateToken(userCredentialModel.login)
+            authDAO.addRefreshToken(userCredentialModel.login, RefreshTokenModel(token.refreshToken))
 
             call.respond(HttpStatusCode.OK, token)
         } else {
@@ -53,24 +53,23 @@ fun Route.authRoutes(authDAO: AuthDAOFacade) {
 
     post("/auth/refresh-token") {
         val refreshTokenModel = call.receive<RefreshTokenModel>()
-        if (authDAO.validateRefreshToken(refreshTokenModel)) {
-            val expiresIn = System.currentTimeMillis() + 600_000
-            val accessToken = JWT.create()
-                .withAudience(audience)
-                .withIssuer(issuer)
-                .withClaim("login", refreshTokenModel.login)
-                .withExpiresAt(Date(expiresIn))
-                .sign(Algorithm.HMAC256(tokenSecret))
-            val refreshToken = JWT.create()
-                .withIssuer(issuer)
-                .withClaim("login", refreshTokenModel.login)
-                .withExpiresAt(Date(System.currentTimeMillis() + 2_592_000_000))  // 30 days
-                .sign(Algorithm.HMAC256(refreshTokenSecret))
 
-            val token = AuthTokenModel(accessToken, refreshToken, expiresIn.toULong())
-            call.respond(HttpStatusCode.OK, token)
-        } else {
-            call.respond(HttpStatusCode.Unauthorized, "Invalid credentials")
+        try {
+            val verifier = JWT
+                .require(Algorithm.HMAC256(refreshTokenSecret))
+                .withIssuer(issuer)
+                .build()
+            val decodedJWT: DecodedJWT = verifier.verify(refreshTokenModel.refreshToken)
+            val login = decodedJWT.getClaim("login").asString()
+
+            if (authDAO.validateRefreshToken(login, refreshTokenModel)) {
+                val token = generateToken(login)
+                call.respond(HttpStatusCode.OK, token)
+            } else {
+                call.respond(HttpStatusCode.Unauthorized, "Invalid credentials")
+            }
+        } catch (e: Exception) {
+            call.respond(HttpStatusCode.Unauthorized, "Invalid refresh token")
         }
     }
 }
