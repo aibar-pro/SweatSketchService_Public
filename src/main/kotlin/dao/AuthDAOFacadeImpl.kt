@@ -21,28 +21,28 @@ class AuthDAOFacadeImpl: AuthDAOFacade {
         }.singleOrNull() != null
     }
 
-    override suspend fun addRefreshToken(refreshTokenModel: RefreshTokenModel) {
+    override suspend fun addRefreshToken(userLogin: String, refreshTokenModel: RefreshTokenModel) {
         transaction {
-            val existingUser = RefreshTokens.select { RefreshTokens.login eq refreshTokenModel.login }.singleOrNull()
+            val existingUser = RefreshTokens.select { RefreshTokens.login eq userLogin }.singleOrNull()
             if (existingUser != null) {
                 val refreshTokenData = existingUser.toRefreshTokenDataModel()
                 val updatedTokens = refreshTokenData.refreshTokensMap + (System.currentTimeMillis() to refreshTokenModel.refreshToken)
-                RefreshTokens.update({ RefreshTokens.login eq refreshTokenModel.login }) {
+                RefreshTokens.update({ RefreshTokens.login eq userLogin }) {
                     it[refreshTokensMap] = Json.encodeToString(updatedTokens)
                 }
             } else {
                 val newTokens = mapOf(System.currentTimeMillis() to refreshTokenModel.refreshToken)
                 RefreshTokens.insert {
-                    it[login] = refreshTokenModel.login
+                    it[login] = userLogin
                     it[refreshTokensMap] = Json.encodeToString(newTokens)
                 }
             }
         }
     }
 
-    override suspend fun validateRefreshToken(refreshTokenModel: RefreshTokenModel): Boolean = dbQuery {
+    override suspend fun validateRefreshToken(login: String, refreshTokenModel: RefreshTokenModel): Boolean = dbQuery {
         val refreshTokenRow = RefreshTokens.select {
-            RefreshTokens.login eq refreshTokenModel.login
+            RefreshTokens.login eq login
         }.singleOrNull() ?: return@dbQuery false
 
         val refreshTokensMap: Map<Long, String> = Json.decodeFromString(refreshTokenRow[RefreshTokens.refreshTokensMap])
