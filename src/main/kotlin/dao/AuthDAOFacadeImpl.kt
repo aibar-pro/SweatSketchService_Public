@@ -10,6 +10,7 @@ import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
 import pro.aibar.sweatsketch.database.DatabaseSingleton.dbQuery
 import pro.aibar.sweatsketch.models.RefreshTokenModel
+import pro.aibar.sweatsketch.models.TokenNotFoundException
 import pro.aibar.sweatsketch.models.Users
 import toRefreshTokenDataModel
 
@@ -36,6 +37,38 @@ class AuthDAOFacadeImpl: AuthDAOFacade {
                     it[login] = userLogin
                     it[refreshTokensMap] = Json.encodeToString(newTokens)
                 }
+            }
+        }
+    }
+
+    override suspend fun updateRefreshToken(
+        userLogin: String,
+        newRefreshToken: RefreshTokenModel,
+        oldRefreshToken: RefreshTokenModel
+    ) {
+        transaction {
+            val existingUser = RefreshTokens.select { RefreshTokens.login eq userLogin }.singleOrNull()
+            if (existingUser != null) {
+                val refreshTokenData = existingUser.toRefreshTokenDataModel()
+                var oldTokenFound = false
+                val updatedTokens = refreshTokenData.refreshTokensMap.mapNotNull {
+                    if (it.value == oldRefreshToken.refreshToken) {
+                        oldTokenFound = true
+                        null
+                    } else {
+                        it.key to it.value
+                    }
+                }.toMap() + (System.currentTimeMillis() to newRefreshToken.refreshToken)
+
+                if (!oldTokenFound) {
+                    throw TokenNotFoundException("Old refresh token not found for user $userLogin")
+                }
+
+                RefreshTokens.update({ RefreshTokens.login eq userLogin }) {
+                    it[refreshTokensMap] = Json.encodeToString(updatedTokens)
+                }
+            } else {
+                throw TokenNotFoundException("User $userLogin not found")
             }
         }
     }
