@@ -23,7 +23,7 @@ fun Route.authRoutes(authDAO: AuthDAOFacade) {
     val refreshTokenSecret = environment!!.config.property("jwt.refreshSecret").getString()
 
     fun generateToken(login: String): AuthTokenModel {
-        val expiresIn = System.currentTimeMillis() + 600_000
+        val expiresIn = System.currentTimeMillis() + 86_400_000 // 24 hours
         val accessToken = JWT.create()
             .withAudience(audience)
             .withIssuer(issuer)
@@ -33,7 +33,7 @@ fun Route.authRoutes(authDAO: AuthDAOFacade) {
         val refreshToken = JWT.create()
             .withIssuer(issuer)
             .withClaim("login", login)
-            .withExpiresAt(Date(System.currentTimeMillis() + 2_592_000_000))  // 30 days
+            .withExpiresAt(Date(System.currentTimeMillis() + 7_776_000_000))  // 90 days
             .sign(Algorithm.HMAC256(refreshTokenSecret))
         return AuthTokenModel(accessToken, refreshToken, expiresIn.toULong())
     }
@@ -64,6 +64,7 @@ fun Route.authRoutes(authDAO: AuthDAOFacade) {
 
             if (authDAO.validateRefreshToken(login, refreshTokenModel)) {
                 val token = generateToken(login)
+                authDAO.updateRefreshToken(login, RefreshTokenModel(token.refreshToken), refreshTokenModel)
                 call.respond(HttpStatusCode.OK, token)
             } else {
                 call.respond(HttpStatusCode.Unauthorized, "Invalid credentials")

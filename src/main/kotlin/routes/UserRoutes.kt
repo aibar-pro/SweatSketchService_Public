@@ -6,6 +6,7 @@ import io.ktor.server.auth.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
+import pro.aibar.sweatsketch.models.ResponseMessageModel
 import pro.aibar.sweatsketch.models.UserCredentialModel
 import pro.aibar.sweatsketch.models.UserProfileModel
 
@@ -15,7 +16,7 @@ fun Route.userRoutes(userDAO: UserDAOFacade) {
         val passwordHash = hashPassword(newUser.password)
         val user = userDAO.addNewUser(newUser.login, passwordHash)
         if (user != null) {
-            call.respondText("User saved with login: ${newUser.login}", status = HttpStatusCode.Created)
+            call.respond(HttpStatusCode.Created, ResponseMessageModel("User saved with login: ${newUser.login}"))
         } else {
             call.respond(HttpStatusCode.Conflict, "Username already exists")
         }
@@ -43,7 +44,7 @@ fun Route.userRoutes(userDAO: UserDAOFacade) {
             val userProfileUpdate = call.receive<UserProfileModel>()
             val updatedProfile = userDAO.updateUserProfile(login, userProfileUpdate)
             if (updatedProfile != null) {
-                call.respondText("User profile updated for login: $login", status = HttpStatusCode.OK)
+                call.respond(HttpStatusCode.OK, ResponseMessageModel("User profile updated for login: $login"))
             } else {
                 call.respond(HttpStatusCode.NotFound, "User profile not found")
             }
