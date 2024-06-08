@@ -26,14 +26,14 @@ fun Route.userRoutes(userDAO: UserDAOFacade) {
         post("/user/profile") {
             val userProfile = call.receive<UserProfileModel>()
             userDAO.addUserProfile(userProfile)
-            call.respondText("User profile saved for login: ${userProfile.login}", status = HttpStatusCode.Created)
+            call.respond(HttpStatusCode.Created, ResponseMessageModel("User profile saved for login: ${userProfile.login}"))
         }
 
         get("/user/profile/{login}") {
             val login = call.parameters["login"] ?: return@get call.respond(HttpStatusCode.BadRequest, "Missing or malformed login")
             val userProfile = userDAO.getUserProfile(login)
             if (userProfile != null) {
-                call.respond(userProfile)
+                call.respond(HttpStatusCode.OK, userProfile)
             } else {
                 call.respond(HttpStatusCode.NotFound, "User profile not found")
             }
