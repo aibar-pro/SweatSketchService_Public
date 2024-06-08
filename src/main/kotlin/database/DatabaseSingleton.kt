@@ -1,6 +1,6 @@
 package pro.aibar.sweatsketch.database
 
-import RefreshTokens
+import UserSessions
 import kotlinx.coroutines.Dispatchers
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.SchemaUtils
@@ -16,7 +16,7 @@ object DatabaseSingleton {
         val database = Database.connect(jdbcURL, driverClassName)
         transaction(database) {
             SchemaUtils.create(Users)
-            SchemaUtils.create(RefreshTokens)
+            SchemaUtils.create(UserSessions)
             SchemaUtils.create(UserProfiles)
         }
     }
