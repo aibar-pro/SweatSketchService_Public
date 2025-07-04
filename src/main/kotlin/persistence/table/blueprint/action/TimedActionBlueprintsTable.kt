@@ -2,11 +2,11 @@ package pro.aibar.sweatsketch.persistence.table.actiontemplates
 
 import org.jetbrains.exposed.dao.id.UUIDTable
 import org.jetbrains.exposed.sql.ReferenceOption
-import pro.aibar.sweatsketch.persistence.table.workout.ExerciseTemplatesTable
+import pro.aibar.sweatsketch.persistence.table.workout.ExerciseBlueprintsTable
 
-object TimedActionTemplatesTable : UUIDTable("timed_action_templates") {
-    val exerciseTemplate =
-        reference("exercise_template_uuid", ExerciseTemplatesTable, onDelete = ReferenceOption.CASCADE)
+object TimedActionBlueprintsTable : UUIDTable("timed_action_blueprints") {
+    val exerciseBlueprint =
+        reference("exercise_blueprint_uuid", ExerciseBlueprintsTable, onDelete = ReferenceOption.CASCADE)
     val position = integer("position")
     val sets = integer("sets")
     val min = integer("min")
