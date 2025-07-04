@@ -11,32 +11,38 @@ import io.ktor.server.routing.get
 import io.ktor.server.routing.post
 import io.ktor.server.routing.route
 import org.jetbrains.exposed.sql.transactions.transaction
-import pro.aibar.sweatsketch.api.workout.NewTemplateRequestDto
-import pro.aibar.sweatsketch.api.workout.TemplateVisibility
-import pro.aibar.sweatsketch.persistence.dao.workout.TemplateDao
+import pro.aibar.sweatsketch.api.workout.NewBlueprintRequestDto
+import pro.aibar.sweatsketch.api.workout.BlueprintVisibility
+import pro.aibar.sweatsketch.persistence.dao.workout.BlueprintDao
 import java.util.UUID
 
-fun Route.templateRoutes(dao: TemplateDao) {
+fun Route.blueprintRoutes(dao: BlueprintDao) {
 
-    route("/template") {
+    route("/blueprint") {
         authenticate("jwt-auth") {
             post {
                 val principal = call.principal<JWTPrincipal>()
                     ?: return@post call.respond(HttpStatusCode.Unauthorized)
                 val userId = UUID.fromString(principal.subject)
 
-                val body = call.receive<NewTemplateRequestDto>()
-                val id = transaction { dao.createTemplate(body, userId) }
+                val body = call.receive<NewBlueprintRequestDto>()
+                val id = transaction {
+                    dao.saveBlueprint(
+                        body.blueprint,
+                        body.visibility,
+                        userId
+                    )
+                }
                 call.respond(HttpStatusCode.Created, mapOf("templateId" to id))
             }
 
-            get {
+            get("/my") {
                 val principal = call.principal<JWTPrincipal>()
                     ?: return@get call.respond(HttpStatusCode.Unauthorized)
                 val userId = UUID.fromString(principal.subject)
 
                 val visParam = call.request.queryParameters["visibility"]
-                val vis = visParam?.let { TemplateVisibility.valueOf(it) }
+                val vis = visParam?.let { BlueprintVisibility.valueOf(it) }
                 val templates = transaction { dao.listTemplates(visibility = vis, userId) }
                 call.respond(templates)
             }
@@ -44,21 +50,9 @@ fun Route.templateRoutes(dao: TemplateDao) {
             get("{id}") {
                 val id = runCatching { UUID.fromString(call.parameters["id"]!!) }.getOrNull()
                     ?: return@get call.respond(HttpStatusCode.BadRequest, "Invalid id")
-                val dto = transaction { dao.getTemplate(id) }
+                val dto = transaction { dao.fetchBlueprint(id) }
                     ?: return@get call.respond(HttpStatusCode.NotFound)
                 call.respond(dto)
-            }
-
-            post("{id}/clone") {
-                val principal = call.principal<JWTPrincipal>()
-                    ?: return@post call.respond(HttpStatusCode.Unauthorized)
-                val userId = UUID.fromString(principal.subject)
-
-                val id = runCatching { UUID.fromString(call.parameters["id"]!!) }.getOrNull()
-                    ?: return@post call.respond(HttpStatusCode.BadRequest, "Invalid id")
-
-                val planId = transaction { dao.cloneTemplate(id, userId) }
-                call.respond(HttpStatusCode.Created, mapOf("planId" to planId))
             }
         }
     }

@@ -13,6 +13,7 @@ import java.util.*
 fun Application.configureAuth() {
     val serviceRealm = environment.config.property("jwt.realm").getString()
     val secret = environment.config.property("jwt.secret").getString()
+    val refreshTokenSecret = environment.config.property("jwt.refreshSecret").getString()
     val issuer = environment.config.property("jwt.issuer").getString()
     val audience = environment.config.property("jwt.audience").getString()
 
@@ -26,15 +27,41 @@ fun Application.configureAuth() {
                     .withIssuer(issuer)
                     .build()
             )
+
             validate { credential ->
-                val login = credential.payload.getClaim("login").asString()
-                if (credential.payload.expiresAt?.after(Date()) == true && !login.isNullOrEmpty()) {
+                val isNotExpired = credential.payload.expiresAt?.after(Date()) == true
+                val userId = runCatching { UUID.fromString(credential.subject) }.getOrNull()
+
+                if (isNotExpired && userId != null) {
                     JWTPrincipal(credential.payload)
                 } else {
                     null
                 }
             }
-            challenge { _, _ -> call.respond(HttpStatusCode.Unauthorized, "Token is not valid or has expired") }
+
+            challenge { _, _ ->
+                call.respond(HttpStatusCode.Unauthorized, "Token is not valid or has expired")
+            }
+        }
+
+        jwt("refresh-jwt") {
+            realm = serviceRealm
+            verifier(
+                JWT
+                    .require(Algorithm.HMAC256(refreshTokenSecret))
+                    .withIssuer(issuer)
+                    .build()
+            )
+            validate { credential ->
+                val isNotExpired = credential.payload.expiresAt?.after(Date()) == true
+                val userId = runCatching { UUID.fromString(credential.subject) }.getOrNull()
+
+                if (isNotExpired && userId != null) {
+                    JWTPrincipal(credential.payload)
+                } else {
+                    null
+                }
+            }
         }
     }
 }

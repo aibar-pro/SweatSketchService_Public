@@ -6,7 +6,7 @@ ktor:
       - pro.aibar.sweatsketch.ApplicationKt.mainModule
       - pro.aibar.sweatsketch.ApplicationKt.userModule
       - pro.aibar.sweatsketch.ApplicationKt.authModule
-      - pro.aibar.sweatsketch.ApplicationKt.workoutModule
+      - pro.aibar.sweatsketch.ApplicationKt.blueprintModule
 
 
 jwt:
